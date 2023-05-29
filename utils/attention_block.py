@@ -4,17 +4,19 @@
 #
 # The input to this is a sequence of tokens. It's assumed the tokens
 # are embedded so they all have dimensions embed_dim. Thus the input
-# becomes a tensor of shape (num_tokens, embed_dim)
+# becomes a tensor of shape (B, seq_len, embed_dim)
 #
 # The output of this is the same sequence of tokens but embedded in a
 # new space that encodes context. This new context matrix has shape
-# (num_tokens, v_dim). 
+# (B, seq_len, v_dim). 
 #
 # Reference: https://sebastianraschka.com/blog/2023/self-attention-from-scratch.html
 
 import torch
+import torch.nn as nn
+from torch.nn import functional as F
 
-class SelfAttention(torch.nn.Module):
+class SelfAttention(nn.Module):
   def __init__(self, embed_dim, kq_dim, v_dim) -> None:
     '''
     Initializes Block.
@@ -23,38 +25,45 @@ class SelfAttention(torch.nn.Module):
     kq_dim: desired dimensions of the queries and keys.
     v_dim: desired dimensions of the values.
     '''
-    super().__init__()
+    super().__init__() 
 
     self.embed_dim = embed_dim
     self.kq_dim = kq_dim
     self.v_dim = v_dim
 
-    self.Wq = torch.nn.Parameter(torch.rand(kq_dim, embed_dim))
-    self.Wk = torch.nn.Parameter(torch.rand(kq_dim, embed_dim))
-    self.Wv = torch.nn.Parameter(torch.rand(v_dim, embed_dim))
+    self.query_embed = nn.Linear(embed_dim, kq_dim, bias=False)
+    self.key_embed = nn.Linear(embed_dim, kq_dim, bias=False)
+    self.value_embed = nn.Linear(embed_dim, v_dim, bias=False)
 
   def forward(self, X):
     '''
-    Computes f(x) on input.
+    Computes self-attention on each sequence of tokens in the batch.
 
-    X: tensor with shape (num_tokens, embed_dim)
+    X: tensor with shape (B, seq_len, embed_dim)
     '''
-    # Shape: (num_tokens, kq_dim)
-    queries = torch.matmul(self.Wq, X.T).T
-    keys = torch.matmul(self.Wk, X.T).T
+    # Shape: (B, seq_len, kq_dim)
+    Q = self.query_embed(X)
+    K = self.key_embed(X)
 
-    # Shape: (num_tokens, v_dim)
-    values = torch.matmul(self.Wv, X.T).T
+    # Shape: (B, seq_len, v_dim)
+    V = self.value_embed(X)
 
-    # Shape = (num_tokens, num_tokens)
-    attention_matrix = torch.matmul(queries, keys.T)
-    scaled_attention_matrix = attention_matrix / self.kq_dim ** 0.5
-    normalized_attention_matrix = torch.nn.functional.softmax(scaled_attention_matrix, dim=-1)
-    
-    # Shape = (num_tokens, v_dim)
-    context = torch.matmul(normalized_attention_matrix, values)
+
+    # TODO: Add masking so we can't look at future tokens!
+
+    # This does batch matrix multiplication, so it becomes:
+    #      (B, seq_len, kq_dim) x (B, kq_dim, seq_len) 
+    # which has the final shape:
+    #      (B, seq_len, seq_len)
+    attention_matrix = torch.matmul(Q, K.transpose(-1, -2))
+    scaled_attention_matrix = attention_matrix / self.kq_dim ** -0.5
+    normalized_attention_matrix = F.softmax(scaled_attention_matrix, dim=-1)
+  
+    # This does batch matrix multiplication, so it becomes:
+    #      (B, seq_len, seq_len) x (B, seq_len, v_dim) 
+    # which has the final shape:
+    #      (B, seq_len, v_dim)
+    context = torch.matmul(normalized_attention_matrix, V)
 
     return context
-
-
 

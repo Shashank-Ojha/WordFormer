@@ -10,7 +10,8 @@
 # new space that encodes context. This new context matrix has shape
 # (B, seq_len, v_dim). 
 #
-# Reference: https://sebastianraschka.com/blog/2023/self-attention-from-scratch.html
+# References: https://sebastianraschka.com/blog/2023/self-attention-from-scratch.html
+#             https://www.youtube.com/watch?v=kCc8FmEb1nY&t=51s
 
 import torch
 import torch.nn as nn
@@ -27,9 +28,7 @@ class SelfAttention(nn.Module):
     '''
     super().__init__() 
 
-    self.embed_dim = embed_dim
     self.kq_dim = kq_dim
-    self.v_dim = v_dim
 
     self.query_embed = nn.Linear(embed_dim, kq_dim, bias=False)
     self.key_embed = nn.Linear(embed_dim, kq_dim, bias=False)

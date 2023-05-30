@@ -1,0 +1,7 @@
+- Add future masks to attention block
+- Add multi-head attention
+- Implement Add and Norm Layers. Add layer should include non-linearity.
+- Add Dropout
+- Add Positional Embedding
+- Increase model params
+- Train on GPUs

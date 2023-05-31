@@ -1,4 +1,3 @@
-- Add future masks to attention block
 - Add multi-head attention
 - Implement Add and Norm Layers. Add layer should include non-linearity.
 - Add Dropout

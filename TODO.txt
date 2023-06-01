@@ -1,5 +1,4 @@
-- Add multi-head attention
-- Implement Add and Norm Layers. Add layer should include non-linearity.
+- Understand Norm Layers
 - Add Dropout
 - Increase model params
 - Train on GPUs

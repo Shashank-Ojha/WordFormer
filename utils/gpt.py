@@ -3,6 +3,7 @@
 # Implements the generative pre-trained transformer (GPT) model
 
 import math
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -45,6 +46,8 @@ class SelfAttention(nn.Module):
     Computes self-attention on each sequence of tokens in the batch.
 
     X: tensor with shape (B, seq_len, embed_dim)
+    
+    Returns: tensor with shape (B, seq_len, v_dim)
     '''
     (_, seq_len, _) = X.shape
 
@@ -79,6 +82,49 @@ class SelfAttention(nn.Module):
 
     return context
 
+
+class MultiHeadAttention(nn.Module):
+   def __init__(self, num_heads, embed_dim, kq_dim, v_dim, max_seq_length):
+      super().__init__()
+      self.heads = nn.ModuleList([SelfAttention(embed_dim, kq_dim, v_dim, max_seq_length) for _ in range(num_heads)])
+      # It's unclear to me why we need this. This is what Karpathy does in his video.
+      self.proj = nn.Linear(num_heads * v_dim, num_heads * v_dim)
+  
+   def forward(self, x):
+      # h(x) has shape (B, seq_len, v_dim)
+      # The concatenation of these has shape (B, seq_len, num_heads * v_dim)
+      heads = torch.cat([h(x) for h in self.heads], dim=-1)
+      return self.proj(heads)
+   
+class FeedForward(nn.Module):
+   def __init__(self, input_dim, output_dim):
+      super().__init__()
+      self.net = nn.Sequential(
+         nn.Linear(input_dim, 4 * output_dim),
+         nn.ReLU(),
+         nn.Linear(4 * output_dim, input_dim),
+      )
+
+   def forward(self, x):
+      return self.net(x)
+      
+class Block(nn.Module):
+  def __init__(self, embed_dim, num_heads, kq_dim, v_dim, max_seq_length):
+    super().__init__()
+    self.ln1 = nn.LayerNorm(embed_dim)
+    self.attention = MultiHeadAttention(num_heads, embed_dim, kq_dim, v_dim, max_seq_length)
+    self.ln2 = nn.LayerNorm(num_heads * v_dim)
+    self.feed_forward = FeedForward(num_heads * v_dim, num_heads * v_dim)
+  
+  def forward(self, x):
+    '''
+    x: tensor with shape (B, seq_len, embed_dim)
+    '''
+    # Note that we do x = x + f(x) here to introduce skip/residual connections.
+    # Shape = (B, seq_len, num_heads * v_dim)
+    x = x + self.attention(self.ln1(x))
+    # Shape = (B, seq_len, num_heads * v_dim)
+    return x + self.feed_forward(self.ln2(x))
 
 class PositionalEncoder(nn.Module):
 
@@ -116,7 +162,11 @@ class GPTConfig:
   # Embedding Layer
   embed_dim: int
 
-  # Attention Layer
+  # Blocks
+  num_blocks: int
+
+  # Multi-Head Attention Layer
+  num_heads: int
   kq_dim: int
   v_dim: int
 
@@ -129,19 +179,19 @@ class GPT(torch.nn.Module):
     super().__init__()
 
     self.config = config
+    assert config.num_heads * config.v_dim == config.embed_dim
 
+    # Note that while max_seq_length is passed to the Self Attention module, it really is
+    # just an upper bound on the max block size. Any input shape of (max_seq_length, t) where
+    # t <= max_seq_length is valid.
     self.token_embedding_table = nn.Embedding(config.vocab_size, config.embed_dim)
     self.positional_encoder = PositionalEncoder(config.embed_dim, config.max_seq_length)
-
-    # Note that while block_size is passed to the Self Attention module, it really is
-    # just an upper bound on the max block size. Any input shape of (batch_size, t) where
-    # t <= block_size is valid.
-    self.model = nn.Sequential(
-        # Transforms shape to (batch_size, block_size, v_dim)
-        SelfAttention(config.embed_dim, config.kq_dim, config.v_dim, config.max_seq_length),
-        # Transforms shape to (batch_size, block_size, vocab_size)
-        nn.Linear(config.v_dim, config.vocab_size)
-    )
+    self.blocks = nn.Sequential(*[
+       Block(config.embed_dim, config.num_heads, config.kq_dim, config.v_dim, config.max_seq_length)
+         for _ in range(config.num_blocks)
+      ])
+    self.layer_norm = nn.LayerNorm(config.embed_dim)
+    self.linear = nn.Linear(config.num_heads * config.v_dim, config.vocab_size)
 
   def forward(self, x):
     '''
@@ -153,7 +203,10 @@ class GPT(torch.nn.Module):
     position_embed = self.positional_encoder(x)
     # Shape = (batch_size, seq_len, embed_dim)
     x = token_embed + position_embed
-    return self.model(x)
+    # Shape = (batch_size, seq_len, num_heads * v_dim)
+    x = self.blocks(x)
+    # Shape = (batch_size, seq_len, vocab_size)
+    return self.linear(x)
     
   def generate(self, context, max_new_tokens):
     '''

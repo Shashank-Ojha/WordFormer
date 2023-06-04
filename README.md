@@ -1,5 +1,8 @@
 # WordFormer
-Implements transformer architecture to predict next letter in word
+Implements transformer architecture to predict next letter in word.
+
+We test this specifically by training and testing on Shakespeare text. After
+training, this model is able to generate text that resembles Shakespeare.
 
 ## How to run
 Just type `jupyter notebook` into your terminal and open the link it gives you.

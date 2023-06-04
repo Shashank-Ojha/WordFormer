@@ -55,3 +55,13 @@ There's a lot of words that are just gibberish.
 To improve these results, we would need to scale up the hyperparameters and
 train for longer. However, this requires more time and/or better GPUs, so we
 leave it here for now.
+
+
+# References
+This toy project was heavily inspired by Andrej Karpathy's course:
+https://www.youtube.com/watch?v=kCc8FmEb1nY&ab_channel=AndrejKarpathy
+
+Also I'd like to cite:
+
+Attention Is All You Need Paper: https://arxiv.org/abs/1706.03762
+Self Attention Blog Post: https://sebastianraschka.com/blog/2023/self-attention-from-scratch.html

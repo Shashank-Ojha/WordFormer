@@ -1,4 +1,2 @@
-- Understand Norm Layers
-- Add Dropout
 - Increase model params
 - Train on GPUs

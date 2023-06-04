@@ -21,13 +21,14 @@ def loss_fn(logits, targets):
     return F.cross_entropy(logits, targets)
     
 @torch.no_grad()
-def estimate_loss(model, train_data, val_data, eval_iters, batch_size, block_size):
+def estimate_loss(model, train_data, val_data, eval_iters, batch_size, block_size, device):
     out = {}
     model.eval()
     for dataset_type, dataset in {'train': train_data, 'val': val_data}.items():
         losses = torch.zeros(eval_iters)
         for k in range(eval_iters):
             xb, yb = get_batch(dataset, batch_size, block_size)
+            xb, yb = xb.to(device), yb.to(device)
             logits = model(xb)
             loss = loss_fn(logits, yb)
             losses[k] = loss.item()

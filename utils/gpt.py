@@ -1,9 +1,10 @@
 # Shashank Ojha
 #
 # Implements the generative pre-trained transformer (GPT) model
-
+#
+# References: https://sebastianraschka.com/blog/2023/self-attention-from-scratch.html
+#             https://www.youtube.com/watch?v=kCc8FmEb1nY&t=51s
 import math
-from typing import Any
 
 import torch
 import torch.nn as nn
@@ -20,9 +21,6 @@ from dataclasses import dataclass
 # The output of this is the sames sequence of tokens but embedded in a
 # new space that encodes context. This new context matrix has shape
 # (B, seq_len, v_dim). 
-#
-# References: https://sebastianraschka.com/blog/2023/self-attention-from-scratch.html
-#             https://www.youtube.com/watch?v=kCc8FmEb1nY&t=51s
 class SelfAttention(nn.Module):
   def __init__(self, embed_dim, kq_dim, v_dim, max_seq_length) -> None:
     '''
@@ -39,6 +37,8 @@ class SelfAttention(nn.Module):
     self.query_embed = nn.Linear(embed_dim, kq_dim, bias=False)
     self.key_embed = nn.Linear(embed_dim, kq_dim, bias=False)
     self.value_embed = nn.Linear(embed_dim, v_dim, bias=False)
+
+    self.dropout = nn.Dropout(p=0.2)
     self.register_buffer('tril', torch.tril(torch.ones(max_seq_length, max_seq_length)))
 
   def forward(self, X):
@@ -74,6 +74,8 @@ class SelfAttention(nn.Module):
     scaled_attention_matrix = attention_matrix / self.kq_dim ** -0.5
     normalized_attention_matrix = F.softmax(scaled_attention_matrix, dim=-1)
   
+    normalized_attention_matrix = self.dropout(normalized_attention_matrix)
+
     # This does batch matrix multiplication, so it becomes:
     #      (B, seq_len, seq_len) x (B, seq_len, v_dim) 
     # which has the final shape:
@@ -89,12 +91,13 @@ class MultiHeadAttention(nn.Module):
       self.heads = nn.ModuleList([SelfAttention(embed_dim, kq_dim, v_dim, max_seq_length) for _ in range(num_heads)])
       # It's unclear to me why we need this. This is what Karpathy does in his video.
       self.proj = nn.Linear(num_heads * v_dim, num_heads * v_dim)
+      self.dropout = nn.Dropout(p=0.2)
   
    def forward(self, x):
       # h(x) has shape (B, seq_len, v_dim)
       # The concatenation of these has shape (B, seq_len, num_heads * v_dim)
       heads = torch.cat([h(x) for h in self.heads], dim=-1)
-      return self.proj(heads)
+      return self.dropout(self.proj(heads))
    
 class FeedForward(nn.Module):
    def __init__(self, input_dim, output_dim):
@@ -103,6 +106,7 @@ class FeedForward(nn.Module):
          nn.Linear(input_dim, 4 * output_dim),
          nn.ReLU(),
          nn.Linear(4 * output_dim, input_dim),
+         nn.Dropout(0.2),
       )
 
    def forward(self, x):

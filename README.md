@@ -1,5 +1,5 @@
 # WordFormer
-Implements transformer architecture to predict next letter in word.
+Implements a GPT architecture to predict next letter in word.
 
 We test this specifically by training and testing on Shakespeare text. After
 training, this model is able to generate text that resembles Shakespeare.

@@ -13,12 +13,12 @@ After training the model for about 15000 iters on T4 GPUs through Google Colab,
 we get the train and validation losses of:
 
 ```
-step <built-in function iter>: train loss 1.9695, val loss 2.0415
-step <built-in function iter>: train loss 1.9431, val loss 2.0218
-step <built-in function iter>: train loss 1.9187, val loss 2.0036
-step <built-in function iter>: train loss 1.8996, val loss 1.9954
-step <built-in function iter>: train loss 1.8816, val loss 1.9857
-step <built-in function iter>: train loss 1.8646, val loss 1.9732
+step 0: train loss 1.9695, val loss 2.0415
+step 1000: train loss 1.9431, val loss 2.0218
+step 2000: train loss 1.9187, val loss 2.0036
+step 3000: train loss 1.8996, val loss 1.9954
+step 4000: train loss 1.8816, val loss 1.9857
+step 4999: train loss 1.8646, val loss 1.9732
 ```
 
 If we generate from the model at this point, we get:
